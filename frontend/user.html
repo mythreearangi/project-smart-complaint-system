@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="user.css">
+
+    <!-- 🔒 User Access Protection -->
+    <script>
+        if (sessionStorage.getItem("role") !== "user") {
+            alert("Please login as User first");
+            window.location.href = "user-login.html";
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>👤 User Dashboard</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- COMPLAINT FORM -->
+    <div class="complaint-form">
+        <h2>Submit Complaint</h2>
+
+        <form id="complaintForm">
+    <label>Complaint Description</label>
+    <textarea id="description"
+              placeholder="Describe your issue clearly..."
+              required></textarea>
+
+    <!-- IMAGE UPLOAD -->
+    <label>Upload Image (optional)</label>
+    <input type="file" id="image" accept="image/*">
+
+    <!-- IMAGE PREVIEW -->
+    <div id="imagePreview"></div>
+
+    <!-- AI placeholder -->
+    <input type="hidden" id="priority" value="0">
+
+    <button type="submit">Submit Complaint</button>
+</form>
+
+
+        <p id="message"></p>
+
+        <!-- AI RESULT -->
+        <div id="aiResult" style="display:none;" class="ai-box">
+            <h3>🤖 AI Analysis</h3>
+            <p><strong>Category:</strong> <span id="aiCategory"></span></p>
+            <p><strong>Priority:</strong> <span id="aiPriority"></span></p>
+        </div>
+    </div>
+
+    <!-- RECENT COMPLAINTS -->
+    <div class="recent-complaints">
+        <h2>Your Recent Complaints</h2>
+        <div id="complaintsList"></div>
+    </div>
+</div>
+
+<script>
+/* LOGOUT */
+function logout() {
+    sessionStorage.clear();
+    window.location.href = "index.html";
+}
+
+/* SUBMIT COMPLAINT */
+document.getElementById("complaintForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const data = {
+        description: document.getElementById("description").value,
+        priority: 0
+    };
+
+    fetch("http://localhost:8080/complaints/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        document.getElementById("message").innerText =
+            "✅ Complaint submitted successfully";
+
+        document.getElementById("aiCategory").innerText = result.category;
+        document.getElementById("aiPriority").innerText = result.priority;
+
+        document.getElementById("aiResult").style.display = "block";
+        document.getElementById("complaintForm").reset();
+
+        loadComplaints();
+    })
+    .catch(() => {
+        document.getElementById("message").innerText =
+            "❌ Error submitting complaint";
+    });
+});
+
+/* LOAD PREVIOUS COMPLAINTS */
+function loadComplaints() {
+    fetch("http://localhost:8080/complaints/all")
+        .then(res => res.json())
+        .then(data => {
+            const list = document.getElementById("complaintsList");
+            list.innerHTML = "";
+
+            if (data.length === 0) {
+                list.innerHTML = "<p>No complaints yet.</p>";
+                return;
+            }
+
+            data.slice(-5).reverse().forEach(c => {
+                list.innerHTML += `
+                    <div class="complaint-card">
+                        <p><strong>ID:</strong> ${c.id}</p>
+                        <p>${c.description}</p>
+                        <p><strong>Category:</strong> ${c.category}</p>
+                        <p><strong>Priority:</strong> ${c.priority}</p>
+                        <p><strong>Status:</strong> ${c.status}</p>
+                    </div>
+                `;
+            });
+        });
+}
+document.getElementById("image").addEventListener("change", function () {
+    const preview = document.getElementById("imagePreview");
+    preview.innerHTML = "";
+
+    const file = this.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.createElement("img");
+            img.src = e.target.result;
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+/* LOAD ON PAGE START */
+loadComplaints();
+</script>
+
+</body>
+</html>

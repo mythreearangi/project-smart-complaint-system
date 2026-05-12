@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="admin.css">
+
+    <!-- 🔒 Admin Access Protection -->
+    <script>
+        if (sessionStorage.getItem("role") !== "admin") {
+            alert("Admin access only. Please login.");
+            window.location.href = "admin-login.html";
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div>
+            <h1>🛠️ Admin Dashboard</h1>
+            <p class="ai-indicator">🤖 Powered by AI – Auto Categorization & Priority Assignment</p>
+        </div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number" id="totalComplaints">0</div>
+            <div class="stat-label">Total Complaints</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="pendingComplaints">0</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="inProgressComplaints">0</div>
+            <div class="stat-label">In Progress</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="resolvedComplaints">0</div>
+            <div class="stat-label">Resolved</div>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+        <select id="statusFilter" onchange="loadComplaints()">
+            <option value="ALL">All Status</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+        </select>
+
+        <select id="categoryFilter" onchange="loadComplaints()">
+            <option value="ALL">All Categories</option>
+            <option value="Water">Water</option>
+            <option value="Electricity">Electricity</option>
+            <option value="Roads">Roads</option>
+            <option value="Hostel">Hostel</option>
+            <option value="Others">Others</option>
+        </select>
+
+        <button class="refresh-btn" onclick="loadComplaints()">Refresh</button>
+    </div>
+
+    <!-- COMPLAINT TABLE -->
+    <div id="complaintsTable" class="complaints-table">
+        <div class="loading">Loading complaints...</div>
+    </div>
+
+</div>
+
+<script>
+/* LOGOUT */
+function logout() {
+    sessionStorage.clear();
+    window.location.href = "index.html";
+}
+
+/* LOAD COMPLAINTS */
+async function loadComplaints() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const categoryFilter = document.getElementById('categoryFilter').value;
+
+    try {
+        const response = await fetch("http://localhost:8080/complaints/all");
+        const complaints = await response.json();
+
+        let filtered = complaints;
+
+        if (statusFilter !== "ALL") {
+            filtered = filtered.filter(c => c.status === statusFilter);
+        }
+
+        if (categoryFilter !== "ALL") {
+            filtered = filtered.filter(c => c.category === categoryFilter);
+        }
+
+        updateStats(complaints);
+
+        const tableDiv = document.getElementById("complaintsTable");
+
+        if (filtered.length === 0) {
+            tableDiv.innerHTML = `<div class="no-data">No complaints found.</div>`;
+            return;
+        }
+
+        tableDiv.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Image</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.map(c => `
+                        <tr>
+                            <td>${c.id}</td>
+                            <td class="description-cell">${c.description}</td>
+                            <td>
+                                <span class="category-badge">📁 ${c.category}</span>
+                                <div class="ai-badge">🤖 AI</div>
+                            </td>
+                            <td>
+                                <span class="priority-badge priority-${c.priority}">⚡ ${c.priority}</span>
+                                <div class="ai-badge">🤖 AI</div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-${c.status.toLowerCase().replace('_','-')}">
+                                    ${c.status.replace('_',' ')}
+                                </span>
+                            </td>
+                            <td>${c.imageUrl ? `<img src="${c.imageUrl}" class="table-image" onclick="showImage('${c.imageUrl}')">` : 'No Image'}</td>
+                            <td>
+                                <select class="status-select" onchange="updateStatus(${c.id}, this.value)">
+                                    <option value="SUBMITTED" ${c.status === 'SUBMITTED' ? 'selected' : ''}>Submitted</option>
+                                    <option value="IN_PROGRESS" ${c.status === 'IN_PROGRESS' ? 'selected' : ''}>In Progress</option>
+                                    <option value="RESOLVED" ${c.status === 'RESOLVED' ? 'selected' : ''}>Resolved</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+
+    } catch (err) {
+        document.getElementById("complaintsTable").innerHTML =
+            `<div class="error">Error loading complaints</div>`;
+    }
+}
+
+/* UPDATE STATUS */
+async function updateStatus(id, status) {
+    await fetch(`http://localhost:8080/complaints/update/${id}?status=${status}`, {
+        method: "PUT"
+    });
+    loadComplaints();
+}
+
+/* UPDATE STATS */
+function updateStats(complaints) {
+    document.getElementById("totalComplaints").innerText = complaints.length;
+    document.getElementById("pendingComplaints").innerText =
+        complaints.filter(c => c.status === "SUBMITTED").length;
+    document.getElementById("inProgressComplaints").innerText =
+        complaints.filter(c => c.status === "IN_PROGRESS").length;
+    document.getElementById("resolvedComplaints").innerText =
+        complaints.filter(c => c.status === "RESOLVED").length;
+}
+
+/* IMAGE MODAL */
+function showImage(url) {
+    const modal = document.createElement("div");
+    modal.className = "image-modal";
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-modal" onclick="this.parentElement.parentElement.remove()">&times;</span>
+            <img src="${url}">
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+/* LOAD ON START */
+loadComplaints();
+</script>
+
+</body>
+</html>

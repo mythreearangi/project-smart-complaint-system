@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Registration</title>
+    <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+
+<div class="auth-box admin">
+    <h2>🛡️ Admin Registration</h2>
+
+    <input type="text" id="adminId" placeholder="Admin ID" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <input type="password" id="confirm" placeholder="Confirm Password" required>
+
+    <button onclick="register()">Register</button>
+
+    <p>
+        Already admin?
+        <a href="admin-login.html">Login here</a>
+    </p>
+</div>
+
+<script>
+function register() {
+    const password = document.getElementById("password").value;
+    const confirm = document.getElementById("confirm").value;
+
+    if (password !== confirm) {
+        alert("Passwords do not match");
+        return;
+    }
+
+    const data = {
+        adminId: document.getElementById("adminId").value,
+        password: password
+    };
+
+    fetch("http://localhost:8080/auth/admin/register", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(() => {
+        alert("Admin registered successfully");
+        window.location.href = "admin-login.html";
+    })
+    .catch(() => alert("Registration failed"));
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Login</title>
+    <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+
+<div class="auth-box">
+    <h2>👤 User Login</h2>
+
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+
+    <button onclick="login()">Login</button>
+
+    <p>
+        New user?
+        <a href="user-register.html">Register here</a>
+    </p>
+</div>
+
+<script>
+function login() {
+    const data = {
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value
+    };
+
+    fetch("http://localhost:8080/auth/user/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(user => {
+        if (user && user.id) {
+            // ✅ Existing user → dashboard
+            sessionStorage.setItem("role", "user");
+            sessionStorage.setItem("userId", user.id);
+            window.location.href = "user.html";
+        } else {
+            // ❌ Not registered
+            alert("User not found. Please register first.");
+            window.location.href = "user-register.html";
+        }
+    })
+    .catch(() => alert("Server error"));
+}
+</script>
+
+</body>
+</html>
